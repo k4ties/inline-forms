@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 // Custom represents a form that may be sent to a player and has fields that should be filled out by the player that the
@@ -16,23 +18,25 @@ type Custom struct {
 	Title string
 	// Buttons is a slice of elements that can be modified by a player. There must be at least one element for the client
 	// to render the form.
-	Elements []Element
-	// Submit is called when the form is closed or if a player pressed the submit button. This is always called after the
-	// Submit of every Element. The values will be passed in a slice, with the same order as the Elements slice. If the
-	// form was closed, the values slice will be nil.
-	Submit func(closed bool, values []any, tx *world.Tx)
+	Elements []IdentifiedElement
+	// Submit is called when the player pressed the submit button. This is always called after the Submit of every Element.
+	// The values will be passed in a slice, with the same order as the Elements slice. If the form was closed, the values
+	// slice will be nil.
+	Submit func(submitter form.Submitter, tx *world.Tx, values map[uuid.UUID]any)
+	// Close is called when the player closes a form.
+	Close func(submitter form.Submitter, tx *world.Tx)
 }
 
 // Element appends an element to the bottom of the form.
-func (form *Custom) Element(element Element) {
+func (form *Custom) Element(element IdentifiedElement) {
 	form.Elements = append(form.Elements, element)
 }
 
 // SubmitJSON ...
-func (form *Custom) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error {
+func (form *Custom) SubmitJSON(data []byte, submitter form.Submitter, tx *world.Tx) error {
 	if data == nil {
-		if form.Submit != nil {
-			form.Submit(true, nil, tx)
+		if form.Close != nil {
+			form.Close(submitter, tx)
 		}
 		return nil
 	}
@@ -42,11 +46,12 @@ func (form *Custom) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) erro
 	if err := dec.Decode(&inputData); err != nil {
 		return fmt.Errorf("error decoding JSON data to slice: %w", err)
 	}
+	dataMap := make(map[uuid.UUID]any)
 	elements := form.Elements
 	if len(elements) != len(inputData) {
-		elements = make([]Element, 0)
+		elements = make([]IdentifiedElement, 0)
 		for _, element := range form.Elements {
-			switch element.(type) {
+			switch element.Value().(type) {
 			case Divider, Header, Label:
 			default:
 				elements = append(elements, element)
@@ -57,13 +62,14 @@ func (form *Custom) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) erro
 		}
 	}
 	for i, element := range elements {
-		err := element.submit(inputData[i])
+		err := element.Value().submit(inputData[i])
 		if err != nil {
 			return fmt.Errorf("error parsing form response value: %w", err)
 		}
+		dataMap[element.Key()] = inputData[i]
 	}
 	if form.Submit != nil {
-		form.Submit(false, inputData, tx)
+		form.Submit(submitter, tx, dataMap)
 	}
 	return nil
 }
@@ -74,8 +80,10 @@ func (form *Custom) MarshalJSON() ([]byte, error) {
 		return nil, errors.New("menu form requires at least one element")
 	}
 	return json.Marshal(map[string]any{
-		"type":    "custom_form",
-		"title":   form.Title,
-		"content": form.Elements,
+		"type":  "custom_form",
+		"title": form.Title,
+		"content": lo.Map(form.Elements, func(item IdentifiedElement, index int) Element {
+			return item.Value()
+		}),
 	})
 }

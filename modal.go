@@ -18,16 +18,18 @@ type Modal struct {
 	Button1 Button
 	// Button2 is the bottom button in the form.
 	Button2 Button
-	// Submit is called when the form is closed or if a player clicks a button. This is always called after the clicked
-	// Button's Submit.
-	Submit func(closed bool, tx *world.Tx)
+	// Submit is called when the player clicks a button. This is always called after the clicked Button's
+	// Submit.
+	Submit func(pressed Button, submitter form.Submitter, tx *world.Tx)
+	// Close is called when the player closes a form.
+	Close func(submitter form.Submitter, tx *world.Tx)
 }
 
 // SubmitJSON ...
-func (form *Modal) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error {
+func (form *Modal) SubmitJSON(data []byte, submitter form.Submitter, tx *world.Tx) error {
 	if data == nil {
-		if form.Submit != nil {
-			form.Submit(true, tx)
+		if form.Close != nil {
+			form.Close(submitter, tx)
 		}
 		return nil
 	}
@@ -43,7 +45,7 @@ func (form *Modal) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error
 		button.Submit(tx)
 	}
 	if form.Submit != nil {
-		form.Submit(false, tx)
+		form.Submit(button, submitter, tx)
 	}
 	return nil
 }

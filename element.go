@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 	"strings"
 	"unicode/utf8"
 )
@@ -313,3 +314,26 @@ func (b Button) submit(any) error { return nil }
 
 // menuElement ...
 func (b Button) menuElement() bool { return true }
+
+// IdentifiedElement is basically form.Element, that is used as key in map.
+type IdentifiedElement interface {
+	Key() uuid.UUID
+	Value() Element
+}
+
+// identifiedElement is IdentifiedElement implementation.
+type identifiedElement struct {
+	key   uuid.UUID
+	value Element
+}
+
+func (elem identifiedElement) Key() uuid.UUID { return elem.key }
+func (elem identifiedElement) Value() Element { return elem.value }
+
+// NewIdentifiedElement creates new IdentifiedElement implementation.
+func NewIdentifiedElement(elem Element) IdentifiedElement {
+	return identifiedElement{
+		key:   uuid.New(),
+		value: elem,
+	}
+}

@@ -17,9 +17,11 @@ type Menu struct {
 	// Elements is a slice of elements that can be displayed in the form. These elements currently include
 	// Header, Label, Divider and Button. Only buttons can be clicked.
 	Elements []MenuElement
-	// Submit is called when the form is closed or if a player clicks a button. This is always called after
-	// the clicked Button's Submit.
-	Submit func(closed bool, tx *world.Tx)
+	// Submit is called when the player clicks a button. This is always called after the clicked Button's
+	// Submit.
+	Submit func(pressed Button, submitter form.Submitter, tx *world.Tx)
+	// Close is called, when form is closed by player.
+	Close func(submitter form.Submitter, tx *world.Tx)
 
 	// buttons is a slice of buttons that are present in the form. This is used to determine which button was
 	// clicked when the form is submitted. It is populated when the form is marshalled to JSON.
@@ -32,10 +34,10 @@ func (form *Menu) Element(e MenuElement) {
 }
 
 // SubmitJSON ...
-func (form *Menu) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error {
+func (form *Menu) SubmitJSON(data []byte, submitter form.Submitter, tx *world.Tx) error {
 	if data == nil {
-		if form.Submit != nil {
-			form.Submit(true, tx)
+		if form.Close != nil {
+			form.Close(submitter, tx)
 		}
 		return nil
 	}
@@ -52,7 +54,7 @@ func (form *Menu) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error 
 		button.Submit(tx)
 	}
 	if form.Submit != nil {
-		form.Submit(false, tx)
+		form.Submit(button, submitter, tx)
 	}
 	return nil
 }
