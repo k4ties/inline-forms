@@ -62,7 +62,7 @@ func (form *Custom) SubmitJSON(data []byte, submitter form.Submitter, tx *world.
 		}
 	}
 	for i, element := range elements {
-		err := element.Value().submit(inputData[i])
+		err := element.Value().submit(inputData[i], submitter, tx)
 		if err != nil {
 			return fmt.Errorf("error parsing form response value: %w", err)
 		}

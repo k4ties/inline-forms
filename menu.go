@@ -51,7 +51,7 @@ func (form *Menu) SubmitJSON(data []byte, submitter form.Submitter, tx *world.Tx
 	}
 	button := form.buttons[index]
 	if button.Submit != nil {
-		button.Submit(tx)
+		button.Submit(submitter, tx)
 	}
 	if form.Submit != nil {
 		form.Submit(button, submitter, tx)

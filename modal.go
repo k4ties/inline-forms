@@ -42,7 +42,7 @@ func (form *Modal) SubmitJSON(data []byte, submitter form.Submitter, tx *world.T
 		button = form.Button2
 	}
 	if button.Submit != nil {
-		button.Submit(tx)
+		button.Submit(submitter, tx)
 	}
 	if form.Submit != nil {
 		form.Submit(button, submitter, tx)
