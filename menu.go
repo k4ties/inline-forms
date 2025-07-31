@@ -19,7 +19,7 @@ type Menu struct {
 	Elements []MenuElement
 	// Submit is called when the form is closed or if a player clicks a button. This is always called after
 	// the clicked Button's Submit.
-	Submit func(closed bool, tx *world.Tx)
+	Submit func(closed bool, submitter form.Submitter, tx *world.Tx)
 
 	// buttons is a slice of buttons that are present in the form. This is used to determine which button was
 	// clicked when the form is submitted. It is populated when the form is marshalled to JSON.
@@ -32,10 +32,10 @@ func (form *Menu) Element(e MenuElement) {
 }
 
 // SubmitJSON ...
-func (form *Menu) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error {
+func (form *Menu) SubmitJSON(data []byte, submitter form.Submitter, tx *world.Tx) error {
 	if data == nil {
 		if form.Submit != nil {
-			form.Submit(true, tx)
+			form.Submit(true, submitter, tx)
 		}
 		return nil
 	}
@@ -49,10 +49,10 @@ func (form *Menu) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error 
 	}
 	button := form.buttons[index]
 	if button.Submit != nil {
-		button.Submit(tx)
+		button.Submit(submitter, tx)
 	}
 	if form.Submit != nil {
-		form.Submit(false, tx)
+		form.Submit(false, submitter, tx)
 	}
 	return nil
 }
@@ -66,9 +66,9 @@ func (form *Menu) MarshalJSON() ([]byte, error) {
 		}
 	}
 	return json.Marshal(map[string]any{
-		"type":     "form",
-		"title":    form.Title,
-		"content":  form.Content,
-		"elements": form.Elements,
+		"type":    "form",
+		"title":   form.Title,
+		"content": form.Content,
+		"buttons": form.buttons,
 	})
 }

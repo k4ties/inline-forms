@@ -20,7 +20,7 @@ type Custom struct {
 	// Submit is called when the form is closed or if a player pressed the submit button. This is always called after the
 	// Submit of every Element. The values will be passed in a slice, with the same order as the Elements slice. If the
 	// form was closed, the values slice will be nil.
-	Submit func(closed bool, values []any, tx *world.Tx)
+	Submit func(closed bool, values []any, submitter form.Submitter, tx *world.Tx)
 }
 
 // Element appends an element to the bottom of the form.
@@ -29,10 +29,10 @@ func (form *Custom) Element(element Element) {
 }
 
 // SubmitJSON ...
-func (form *Custom) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) error {
+func (form *Custom) SubmitJSON(data []byte, submitter form.Submitter, tx *world.Tx) error {
 	if data == nil {
 		if form.Submit != nil {
-			form.Submit(true, nil, tx)
+			form.Submit(true, nil, submitter, tx)
 		}
 		return nil
 	}
@@ -57,13 +57,13 @@ func (form *Custom) SubmitJSON(data []byte, _ form.Submitter, tx *world.Tx) erro
 		}
 	}
 	for i, element := range elements {
-		err := element.submit(inputData[i])
+		err := element.submit(inputData[i], submitter, tx)
 		if err != nil {
 			return fmt.Errorf("error parsing form response value: %w", err)
 		}
 	}
 	if form.Submit != nil {
-		form.Submit(false, inputData, tx)
+		form.Submit(false, inputData, submitter, tx)
 	}
 	return nil
 }

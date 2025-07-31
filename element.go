@@ -3,6 +3,7 @@ package form
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/world"
 	"strings"
 	"unicode/utf8"
@@ -12,7 +13,7 @@ import (
 // the element interface may be added to a form before it is sent to a player.
 type Element interface {
 	json.Marshaler
-	submit(value any) error
+	submit(value any, submitter form.Submitter, tx *world.Tx) error
 }
 
 // MenuElement represents an element that may be added to a Menu form. Any of the types in this package that
@@ -38,7 +39,7 @@ func (l Label) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (l Label) submit(_ any) error { return nil }
+func (l Label) submit(any, form.Submitter, *world.Tx) error { return nil }
 
 // menuElement ...
 func (l Label) menuElement() bool { return true }
@@ -56,7 +57,7 @@ type Input struct {
 	Placeholder string
 	// Submit is called with the value provided by the player whenever they submit the form. If the form is closed, this
 	// method is not called. This is always called before the Form's Submit.
-	Submit func(text string)
+	Submit func(text string, submitter form.Submitter, tx *world.Tx)
 }
 
 // MarshalJSON ...
@@ -70,7 +71,7 @@ func (i Input) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (i Input) submit(value any) error {
+func (i Input) submit(value any, submitter form.Submitter, tx *world.Tx) error {
 	if i.Submit == nil {
 		return nil
 	}
@@ -80,7 +81,7 @@ func (i Input) submit(value any) error {
 	} else if !utf8.ValidString(text) {
 		return fmt.Errorf("value %v is not valid UTF8", value)
 	}
-	i.Submit(text)
+	i.Submit(text, submitter, tx)
 	return nil
 }
 
@@ -94,7 +95,7 @@ type Toggle struct {
 	Default bool
 	// Submit is called with the value provided by the player whenever they submit the form. If the form is closed, this
 	// method is not called. This is always called before the Form's Submit.
-	Submit func(enabled bool)
+	Submit func(enabled bool, submitter form.Submitter, tx *world.Tx)
 }
 
 // MarshalJSON ...
@@ -107,7 +108,7 @@ func (t Toggle) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (t Toggle) submit(value any) error {
+func (t Toggle) submit(value any, submitter form.Submitter, tx *world.Tx) error {
 	if t.Submit == nil {
 		return nil
 	}
@@ -115,7 +116,7 @@ func (t Toggle) submit(value any) error {
 	if !ok {
 		return fmt.Errorf("value %v is not allowed for toggle element", value)
 	}
-	t.Submit(enabled)
+	t.Submit(enabled, submitter, tx)
 	return nil
 }
 
@@ -134,7 +135,7 @@ type Slider struct {
 	Default float64
 	// Submit is called with the value provided by the player whenever they submit the form. If the form is closed, this
 	// method is not called. This is always called before the Form's Submit.
-	Submit func(value float64)
+	Submit func(value float64, submitter form.Submitter, tx *world.Tx)
 }
 
 // MarshalJSON ...
@@ -150,7 +151,7 @@ func (s Slider) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (s Slider) submit(value any) error {
+func (s Slider) submit(value any, submitter form.Submitter, tx *world.Tx) error {
 	if s.Submit == nil {
 		return nil
 	}
@@ -161,7 +162,7 @@ func (s Slider) submit(value any) error {
 	} else if val < s.Min || val > s.Max {
 		return fmt.Errorf("slider value %v is out of range %v-%v", val, s.Min, s.Max)
 	}
-	s.Submit(val)
+	s.Submit(val, submitter, tx)
 	return nil
 }
 
@@ -178,7 +179,7 @@ type Dropdown struct {
 	DefaultIndex int
 	// Submit is called with the value provided by the player whenever they submit the form. If the form is closed, this
 	// method is not called. This is always called before the Form's Submit.
-	Submit func(index int, option string)
+	Submit func(index int, option string, submitter form.Submitter, tx *world.Tx)
 }
 
 // MarshalJSON ...
@@ -192,7 +193,7 @@ func (d Dropdown) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (d Dropdown) submit(value any) error {
+func (d Dropdown) submit(value any, submitter form.Submitter, tx *world.Tx) error {
 	if d.Submit == nil {
 		return nil
 	}
@@ -204,7 +205,7 @@ func (d Dropdown) submit(value any) error {
 	if val < 0 || int(val) >= len(d.Options) {
 		return fmt.Errorf("dropdown value %v is out of range %v-%v", val, 0, len(d.Options)-1)
 	}
-	d.Submit(int(val), d.Options[val])
+	d.Submit(int(val), d.Options[val], submitter, tx)
 	return nil
 }
 
@@ -223,7 +224,7 @@ func (s StepSlider) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (s StepSlider) submit(value any) error {
+func (s StepSlider) submit(value any, submitter form.Submitter, tx *world.Tx) error {
 	if s.Submit == nil {
 		return nil
 	}
@@ -235,7 +236,7 @@ func (s StepSlider) submit(value any) error {
 	if val < 0 || int(val) >= len(s.Options) {
 		return fmt.Errorf("dropdown value %v is out of range %v-%v", val, 0, len(s.Options)-1)
 	}
-	s.Submit(int(val), s.Options[val])
+	s.Submit(int(val), s.Options[val], submitter, tx)
 	return nil
 }
 
@@ -255,7 +256,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (h Header) submit(_ any) error { return nil }
+func (h Header) submit(any, form.Submitter, *world.Tx) error { return nil }
 
 // menuElement ...
 func (h Header) menuElement() bool { return true }
@@ -273,7 +274,7 @@ func (d Divider) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (d Divider) submit(_ any) error { return nil }
+func (d Divider) submit(any, form.Submitter, *world.Tx) error { return nil }
 
 // menuElement ...
 func (d Divider) menuElement() bool { return true }
@@ -289,7 +290,7 @@ type Button struct {
 	// 'textures/blocks/grass_carried'.
 	Image string
 	// Submit is called when a player clicks on the button in a form. This is always called before the Form's Submit.
-	Submit func(tx *world.Tx)
+	Submit func(submitter form.Submitter, tx *world.Tx)
 }
 
 // MarshalJSON ...
@@ -309,7 +310,12 @@ func (b Button) MarshalJSON() ([]byte, error) {
 }
 
 // submit ...
-func (b Button) submit(any) error { return nil }
+func (b Button) submit(_ any, submitter form.Submitter, tx *world.Tx) error {
+	if b.Submit != nil {
+		b.Submit(submitter, tx)
+	}
+	return nil
+}
 
 // menuElement ...
 func (b Button) menuElement() bool { return true }
